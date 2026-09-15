@@ -75,13 +75,14 @@ module.exports = {
   // How many of the most recent messages in that channel to scan per check.
   giveawayScanMessageLimit: 500,
 
-  // Prefix-command moderation: ?to (timeout), ?k (kick), ?b (ban).
-  // Anyone with the Discord "Administrator" permission can use all three
+  // Prefix-command moderation: ?to (timeout), ?k (kick), ?b (ban), ?w (warn).
+  // Anyone with the Discord "Administrator" permission can use all of these
   // regardless of roles. Otherwise each command needs its own role below.
   moderation: {
     prefix: "?",
     timeoutRoleId: "1549321180899450890",
     kickRoleId: "1549321180899450890",
-    banRoleId: "1549321989519310888"
+    banRoleId: "1549321989519310888",
+    warnRoleId: "1549321180899450890"
   }
 };

@@ -1,7 +1,7 @@
 require("dotenv").config();
 const fs = require("fs");
 const path = require("path");
-const { Client, Collection, GatewayIntentBits, Partials, REST, Routes } = require("discord.js");
+const { Client, Collection, EmbedBuilder, GatewayIntentBits, Partials, REST, Routes } = require("discord.js");
 
 const config = require("./config.js");
 const {
@@ -209,23 +209,35 @@ async function runGiveawayCheck(channel, ownerId, amount) {
   const result = await findGiveawayWin(channel.guild, ownerId, amount);
 
   if (!result.configured) {
-    await channel.send({
-      content:
-        `❌ **No, no matching win found for ${formatAmountShort(amount)}.**\n` +
-        "(Note for staff: `giveawayCheckChannelId` isn't set in config.js yet, so this is unverified — please double check manually.)"
-    });
+    const embed = new EmbedBuilder()
+      .setColor(0xed4245)
+      .setTitle("❌ No Matching Win Found")
+      .setDescription(
+        `No matching win found for **${formatAmountShort(amount)}**.\n\n` +
+          "(Note for staff: `giveawayCheckChannelId` isn't set in config.js yet, so this is unverified — please double check manually.)"
+      )
+      .setTimestamp();
+    await channel.send({ embeds: [embed] });
     return;
   }
 
   if (result.found) {
-    await channel.send({
-      content: `✅ **Yes, found a matching win for ${formatAmountShort(amount)}!**`
-    });
+    const embed = new EmbedBuilder()
+      .setColor(0x57f287)
+      .setTitle("✅ Win Found")
+      .setDescription(`Found a matching win for **${formatAmountShort(amount)}**!`)
+      .setTimestamp();
+    await channel.send({ embeds: [embed] });
     await addJumpToWinButton(channel, result.message.url);
   } else {
-    await channel.send({
-      content: `❌ **No matching win found for ${formatAmountShort(amount)}** in <#${config.giveawayCheckChannelId}>. Staff can still verify manually.`
-    });
+    const embed = new EmbedBuilder()
+      .setColor(0xed4245)
+      .setTitle("❌ No Matching Win Found")
+      .setDescription(
+        `No matching win found for **${formatAmountShort(amount)}** in <#${config.giveawayCheckChannelId}>. Staff can still verify manually.`
+      )
+      .setTimestamp();
+    await channel.send({ embeds: [embed] });
   }
 }
 

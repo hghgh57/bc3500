@@ -1,4 +1,4 @@
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require("discord.js");
+const { ActionRowBuilder, StringSelectMenuBuilder, EmbedBuilder } = require("discord.js");
 const config = require("./config.js");
 
 function buildPanel() {
@@ -8,23 +8,28 @@ function buildPanel() {
     .setDescription(config.panelDescription)
     .setThumbnail(config.panelImageUrl);
 
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId(config.ticketTypes.support.buttonId)
-      .setLabel(config.ticketTypes.support.label)
-      .setEmoji(config.ticketTypes.support.emoji)
-      .setStyle(ButtonStyle[config.ticketTypes.support.style]),
-    new ButtonBuilder()
-      .setCustomId(config.ticketTypes.buysell.buttonId)
-      .setLabel(config.ticketTypes.buysell.label)
-      .setEmoji(config.ticketTypes.buysell.emoji)
-      .setStyle(ButtonStyle[config.ticketTypes.buysell.style]),
-    new ButtonBuilder()
-      .setCustomId(config.ticketTypes.giveaway.buttonId)
-      .setLabel(config.ticketTypes.giveaway.label)
-      .setEmoji(config.ticketTypes.giveaway.emoji)
-      .setStyle(ButtonStyle[config.ticketTypes.giveaway.style])
-  );
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId("ticket_select")
+    .setPlaceholder("Select an option...")
+    .addOptions(
+      {
+        label: config.ticketTypes.support.label,
+        value: config.ticketTypes.support.buttonId,
+        emoji: config.ticketTypes.support.emoji
+      },
+      {
+        label: config.ticketTypes.buysell.label,
+        value: config.ticketTypes.buysell.buttonId,
+        emoji: config.ticketTypes.buysell.emoji
+      },
+      {
+        label: config.ticketTypes.giveaway.label,
+        value: config.ticketTypes.giveaway.buttonId,
+        emoji: config.ticketTypes.giveaway.emoji
+      }
+    );
+
+  const row = new ActionRowBuilder().addComponents(menu);
 
   return { embeds: [embed], components: [row] };
 }

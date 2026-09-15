@@ -12,15 +12,24 @@ const {
 const config = require("./config.js");
 
 // Marks a channel as a ticket and remembers which type + owner it belongs to.
-// Stored in the channel topic as: TICKET|<typeKey>|<ownerId>|<claimedById|none>
-function buildTopic(typeKey, ownerId, claimedById) {
-  return `TICKET|${typeKey}|${ownerId}|${claimedById || "none"}`;
+// Stored in the channel topic as:
+// TICKET|<typeKey>|<ownerId>|<claimedById|none>|<giveawayChecked: checked|unchecked>
+// The 5th field only matters for "giveaway" tickets - it remembers whether
+// we've already run the giveaway win check for this ticket, so we only do
+// it once even after a bot restart.
+function buildTopic(typeKey, ownerId, claimedById, giveawayChecked) {
+  return `TICKET|${typeKey}|${ownerId}|${claimedById || "none"}|${giveawayChecked ? "checked" : "unchecked"}`;
 }
 
 function parseTopic(topic) {
   if (!topic || !topic.startsWith("TICKET|")) return null;
-  const [, typeKey, ownerId, claimedById] = topic.split("|");
-  return { typeKey, ownerId, claimedById: claimedById === "none" ? null : claimedById };
+  const [, typeKey, ownerId, claimedById, giveawayChecked] = topic.split("|");
+  return {
+    typeKey,
+    ownerId,
+    claimedById: claimedById === "none" ? null : claimedById,
+    giveawayChecked: giveawayChecked === "checked"
+  };
 }
 
 function ticketActionRow() {
@@ -125,7 +134,7 @@ async function createTicketChannel({ interaction, typeKey, user, fields }) {
   const channelOptions = {
     name: channelName,
     type: ChannelType.GuildText,
-    topic: buildTopic(typeKey, user.id, null),
+    topic: buildTopic(typeKey, user.id, null, false),
     permissionOverwrites: overwrites
   };
 
@@ -256,7 +265,7 @@ async function claimTicket(interaction) {
     });
   }
 
-  await channel.setTopic(buildTopic(info.typeKey, info.ownerId, interaction.user.id));
+  await channel.setTopic(buildTopic(info.typeKey, info.ownerId, interaction.user.id, info.giveawayChecked));
 
   const claimedRow = claimedActionRow(interaction.user.username);
 
@@ -286,7 +295,7 @@ async function unclaimTicket(interaction) {
 
   const previousClaimerId = info.claimedById;
 
-  await channel.setTopic(buildTopic(info.typeKey, info.ownerId, null));
+  await channel.setTopic(buildTopic(info.typeKey, info.ownerId, null, info.giveawayChecked));
 
   const openRow = ticketActionRow();
 
@@ -338,6 +347,49 @@ async function closeTicket(interaction, reason) {
   }, 5000);
 }
 
+// ---------- Giveaway win check helpers ----------
+
+// Flags this ticket's topic as "checked" so the giveaway win check only
+// ever runs once per ticket, while preserving the current claim state.
+async function markGiveawayChecked(channel, info) {
+  await channel.setTopic(buildTopic(info.typeKey, info.ownerId, info.claimedById, true));
+}
+
+// Finds the original ticket panel message (the one with the Close/Claim
+// buttons) so a Jump to Win link button can be appended to it later.
+async function findTicketPanelMessage(channel) {
+  const messages = await channel.messages.fetch({ limit: 25 }).catch(() => null);
+  if (!messages) return null;
+
+  return (
+    messages.find((msg) => {
+      if (msg.author.id !== channel.client.user.id) return false;
+      return msg.components.some((row) =>
+        row.components.some((component) => component.customId === "ticket_close")
+      );
+    }) || null
+  );
+}
+
+// Adds a "Jump to Win" link button onto the ticket panel message, right
+// next to Close/Claim (or Close/Unclaim), without disturbing those buttons.
+async function addJumpToWinButton(channel, url) {
+  const panelMessage = await findTicketPanelMessage(channel);
+  if (!panelMessage) return;
+
+  const existingRow = panelMessage.components[0];
+  if (!existingRow) return;
+
+  const row = ActionRowBuilder.from(existingRow);
+  row.addComponents(
+    new ButtonBuilder().setLabel("Jump to Win").setEmoji("🔗").setStyle(ButtonStyle.Link).setURL(url)
+  );
+
+  const otherRows = panelMessage.components.slice(1).map((r) => ActionRowBuilder.from(r));
+
+  await panelMessage.edit({ components: [row, ...otherRows] }).catch(() => {});
+}
+
 module.exports = {
   buildTopic,
   parseTopic,
@@ -351,5 +403,7 @@ module.exports = {
   buildCloseReasonModal,
   claimTicket,
   unclaimTicket,
-  closeTicket
+  closeTicket,
+  markGiveawayChecked,
+  addJumpToWinButton
 };

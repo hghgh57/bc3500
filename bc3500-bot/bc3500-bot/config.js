@@ -70,7 +70,7 @@ module.exports = {
   // (e.g. "50000"), the bot searches this channel for a message that
   // mentions them AND contains that amount. Leave as "PUT_..._HERE" to
   // disable the check.
-  giveawayCheckChannelId: "PUT_GIVEAWAY_CHECK_CHANNEL_ID_HERE",
+  giveawayCheckChannelId: "1549323453683863573",
 
   // How many of the most recent messages in that channel to scan per check.
   giveawayScanMessageLimit: 500

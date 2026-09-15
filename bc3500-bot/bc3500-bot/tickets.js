@@ -235,6 +235,21 @@ function buildGiveawayModal() {
     );
 }
 
+function buildSupportModal() {
+  return new ModalBuilder()
+    .setCustomId("modal_support")
+    .setTitle("Support")
+    .addComponents(
+      new ActionRowBuilder().addComponents(
+        new TextInputBuilder()
+          .setCustomId("support_issue")
+          .setLabel("What do you need help with?")
+          .setStyle(TextInputStyle.Paragraph)
+          .setRequired(true)
+      )
+    );
+}
+
 function buildCloseReasonModal() {
   return new ModalBuilder()
     .setCustomId("modal_close_reason")
@@ -392,6 +407,50 @@ async function addJumpToWinButton(channel, url) {
   await panelMessage.edit({ components: [row, ...otherRows] }).catch(() => {});
 }
 
+// ---------- Support ticket auto-naming ----------
+
+// Common filler words that don't tell staff anything about the actual
+// issue - stripped out before picking a channel-name keyword so
+// "what do you need help with? I missed my gamble" boils down to
+// something like "missed-gamble" instead of "what-do".
+const KEYWORD_STOPWORDS = new Set([
+  "a", "an", "the", "i", "im", "my", "me", "you", "your", "to", "do", "did", "does",
+  "done", "with", "about", "for", "of", "on", "in", "at", "is", "are", "was", "were",
+  "be", "been", "being", "and", "or", "but", "so", "if", "just", "need", "needs",
+  "needed", "needing", "help", "helping", "please", "pls", "plz", "ticket", "issue",
+  "problem", "question", "questions", "how", "what", "when", "where", "why", "who",
+  "this", "that", "these", "those", "it", "its", "cant", "cannot", "could", "couldnt",
+  "would", "wouldnt", "should", "shouldnt", "have", "has", "had", "having", "get",
+  "got", "getting", "want", "wanted", "wants", "not", "no", "yes", "really", "very",
+  "some", "something", "anything", "someone", "anyone", "support"
+]);
+
+// Turns a free-text answer into a short, Discord-channel-safe slug built
+// from the most meaningful word(s) in it, e.g. "I missed my gamble" -> "missed-gamble".
+// Falls back to "general" if nothing usable is left after filtering.
+function extractKeywordSlug(text, maxWords = 2, maxLen = 24) {
+  if (!text) return "general";
+
+  const words = text
+    .toLowerCase()
+    .replace(/['’]/g, "")
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+    .filter((word) => !KEYWORD_STOPWORDS.has(word));
+
+  const fallbackWords = text.toLowerCase().split(/\s+/).filter(Boolean);
+  const chosen = (words.length ? words : fallbackWords).slice(0, maxWords);
+
+  const slug = chosen
+    .join("-")
+    .replace(/-+/g, "-")
+    .slice(0, maxLen)
+    .replace(/^-+|-+$/g, "");
+
+  return slug || "general";
+}
+
 module.exports = {
   buildTopic,
   parseTopic,
@@ -402,7 +461,9 @@ module.exports = {
   createTicketChannel,
   buildBuySellModal,
   buildGiveawayModal,
+  buildSupportModal,
   buildCloseReasonModal,
+  extractKeywordSlug,
   claimTicket,
   unclaimTicket,
   closeTicket,

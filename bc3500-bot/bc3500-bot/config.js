@@ -13,16 +13,15 @@
 module.exports = {
   // Image shown at the top-right of the ticket panel embed (thumbnail)
   panelImageUrl:
-    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ0ZkDWHsy-ju4jLnTW7nAFTtYTO8XCr0F0NeYp3aYoI54H8teBMqDug3mH&s=10",
+    "https://cdn.britannica.com/19/233519-050-F0604A51/LeBron-James-Los-Angeles-Lakers-Staples-Center-2019.jpg?w=400&h=300&c=crop",
 
-  panelTitle: "BC3500 Bot",
+  panelTitle: "BC3500 Tickets",
 
   panelDescription:
-    "Open a ticket!\n\n" +
     "Please select the category that best matches your request to open a ticket:\n\n" +
-    "🔹 **Support:** General help.\n" +
-    "🔹 **Giveaway Claim / Sponsor:** Claim your prizes or if you want to host a giveaway.\n" +
-    "🔹 **Buying/Selling Skellies:** To sell or purchase spawners.",
+    " **Support:** General help.\n" +
+    " **Giveaway Claim / Sponsor:** Claim your prizes or if you want to host a giveaway.\n" +
+    " **Buying/Selling Skellies:** To sell or purchase spawners.",
 
   // One entry per ticket type. categoryId = the Discord channel CATEGORY the
   // ticket channel gets created under. roleId = the role that gets pinged.

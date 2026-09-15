@@ -48,6 +48,16 @@ function buildCheckButton(checked) {
     .setDisabled(Boolean(checked));
 }
 
+// True for admins and anyone holding the support ticket type's role (the
+// same role used for staff pings/permission overwrites on support tickets,
+// and reused elsewhere in the bot as the general staff role).
+function isStaffMember(member) {
+  if (!member) return false;
+  if (member.permissions.has(PermissionFlagsBits.Administrator)) return true;
+  const staffRoleId = config.ticketTypes.support.roleId;
+  return Boolean(staffRoleId) && member.roles.cache.has(staffRoleId);
+}
+
 function ticketActionRow(typeKey, checked) {
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId("ticket_close").setLabel("Close").setStyle(ButtonStyle.Danger),
@@ -403,16 +413,27 @@ async function checkTicket(interaction) {
   if (info.typeKey !== "support") {
     return interaction.reply({ content: "This button is only for support tickets.", ephemeral: true });
   }
+  if (!isStaffMember(interaction.member)) {
+    return interaction.reply({ content: "Only staff can use the Check button.", ephemeral: true });
+  }
   if (info.supportChecked) {
     return interaction.reply({ content: "This ticket has already been checked.", ephemeral: true });
   }
 
-  await channel.setTopic(buildTopic(info.typeKey, info.ownerId, info.claimedById, info.giveawayChecked, true));
-
   // Discord channel names allow most Unicode set via the API (unlike the
   // client UI's typing restrictions), so the ✅ should come through fine.
   const newName = `✅${channel.name}`.slice(0, 100);
-  await channel.setName(newName).catch(() => {});
+
+  // Topic and name updates both go through the same channel-edit rate
+  // limit (2 changes per 10 minutes). Setting them with two separate calls
+  // could burn both slots on the topic change alone - especially right
+  // after the auto-rename support tickets already get on creation - and
+  // silently drop the ✅ rename. Sending both fields in a single edit()
+  // call uses just one slot, so the emoji always lands.
+  await channel.edit({
+    topic: buildTopic(info.typeKey, info.ownerId, info.claimedById, info.giveawayChecked, true),
+    name: newName
+  });
 
   // Rebuild the existing button row, only swapping the Check button so
   // Close/Claim (or Close/Unclaim) stay exactly as they were.

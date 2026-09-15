@@ -13,7 +13,7 @@
 module.exports = {
   // Image shown at the top-right of the ticket panel embed (thumbnail)
   panelImageUrl:
-    "https://cdn.britannica.com/19/233519-050-F0604A51/LeBron-James-Los-Angeles-Lakers-Staples-Center-2019.jpg?w=400&h=300&c=crop",
+    "https://media.discordapp.net/attachments/1549172001027919954/1549443844322369538/IMG_4628.webp?ex=6aaab787&is=6aa96607&hm=8f265404c71e57593ca61c84c64edbeacd2b9041f16287a58a23abde2dd903c9&=&format=webp",
 
   panelTitle: "🎫 Create a New Ticket",
 

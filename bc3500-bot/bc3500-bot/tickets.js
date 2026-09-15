@@ -13,43 +13,67 @@ const config = require("./config.js");
 
 // Marks a channel as a ticket and remembers which type + owner it belongs to.
 // Stored in the channel topic as:
-// TICKET|<typeKey>|<ownerId>|<claimedById|none>|<giveawayChecked: checked|unchecked>
-// The 5th field only matters for "giveaway" tickets - it remembers whether
-// we've already run the giveaway win check for this ticket, so we only do
-// it once even after a bot restart.
-function buildTopic(typeKey, ownerId, claimedById, giveawayChecked) {
-  return `TICKET|${typeKey}|${ownerId}|${claimedById || "none"}|${giveawayChecked ? "checked" : "unchecked"}`;
+// TICKET|<typeKey>|<ownerId>|<claimedById|none>|<giveawayChecked: checked|unchecked>|<supportChecked: checked|unchecked>
+// The giveawayChecked field only matters for "giveaway" tickets - it remembers
+// whether we've already run the giveaway win check for this ticket. The
+// supportChecked field only matters for "support" tickets - it remembers
+// whether staff have already hit the ✅ Check button, so the channel only
+// gets the "checked-" prefix once.
+function buildTopic(typeKey, ownerId, claimedById, giveawayChecked, supportChecked) {
+  return `TICKET|${typeKey}|${ownerId}|${claimedById || "none"}|${giveawayChecked ? "checked" : "unchecked"}|${
+    supportChecked ? "checked" : "unchecked"
+  }`;
 }
 
 function parseTopic(topic) {
   if (!topic || !topic.startsWith("TICKET|")) return null;
-  const [, typeKey, ownerId, claimedById, giveawayChecked] = topic.split("|");
+  const [, typeKey, ownerId, claimedById, giveawayChecked, supportChecked] = topic.split("|");
   return {
     typeKey,
     ownerId,
     claimedById: claimedById === "none" ? null : claimedById,
-    giveawayChecked: giveawayChecked === "checked"
+    giveawayChecked: giveawayChecked === "checked",
+    supportChecked: supportChecked === "checked"
   };
 }
 
-function ticketActionRow() {
-  return new ActionRowBuilder().addComponents(
+// The green "✅ Check" button shown on support tickets. Turns into a
+// disabled "✅ Checked" once used.
+function buildCheckButton(checked) {
+  return new ButtonBuilder()
+    .setCustomId("ticket_check")
+    .setLabel(checked ? "Checked" : "Check")
+    .setEmoji("✅")
+    .setStyle(ButtonStyle.Success)
+    .setDisabled(Boolean(checked));
+}
+
+function ticketActionRow(typeKey, checked) {
+  const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId("ticket_close").setLabel("Close").setStyle(ButtonStyle.Danger),
     new ButtonBuilder().setCustomId("ticket_claim").setLabel("Claim").setStyle(ButtonStyle.Primary)
   );
+  if (typeKey === "support") {
+    row.addComponents(buildCheckButton(checked));
+  }
+  return row;
 }
 
 // Row shown once a ticket has been claimed: Close stays the same, but the
 // Claim button turns into an (enabled) Unclaim button so the claimer (or
 // another staff member) can release it again.
-function claimedActionRow(claimerUsername) {
-  return new ActionRowBuilder().addComponents(
+function claimedActionRow(claimerUsername, typeKey, checked) {
+  const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId("ticket_close").setLabel("Close").setStyle(ButtonStyle.Danger),
     new ButtonBuilder()
       .setCustomId("ticket_unclaim")
       .setLabel(`Claimed by ${claimerUsername} (Unclaim)`)
       .setStyle(ButtonStyle.Secondary)
   );
+  if (typeKey === "support") {
+    row.addComponents(buildCheckButton(checked));
+  }
+  return row;
 }
 
 // Sends a log embed to config.logChannelId, if one is configured. Used for
@@ -134,7 +158,7 @@ async function createTicketChannel({ interaction, typeKey, user, fields }) {
   const channelOptions = {
     name: channelName,
     type: ChannelType.GuildText,
-    topic: buildTopic(typeKey, user.id, null, false),
+    topic: buildTopic(typeKey, user.id, null, false, false),
     permissionOverwrites: overwrites
   };
 
@@ -159,7 +183,7 @@ async function createTicketChannel({ interaction, typeKey, user, fields }) {
   await channel.send({
     content: `${pingRole}<@${user.id}>`,
     embeds: [embed],
-    components: [ticketActionRow()]
+    components: [ticketActionRow(typeKey, false)]
   });
 
   return { alreadyExists: false, channel };
@@ -280,9 +304,9 @@ async function claimTicket(interaction) {
     });
   }
 
-  await channel.setTopic(buildTopic(info.typeKey, info.ownerId, interaction.user.id, info.giveawayChecked));
+  await channel.setTopic(buildTopic(info.typeKey, info.ownerId, interaction.user.id, info.giveawayChecked, info.supportChecked));
 
-  const claimedRow = claimedActionRow(interaction.user.username);
+  const claimedRow = claimedActionRow(interaction.user.username, info.typeKey, info.supportChecked);
 
   await interaction.update({ components: [claimedRow] }).catch(async () => {
     // If the original interaction can't be updated (e.g. permissions changed), fall back
@@ -310,9 +334,9 @@ async function unclaimTicket(interaction) {
 
   const previousClaimerId = info.claimedById;
 
-  await channel.setTopic(buildTopic(info.typeKey, info.ownerId, null, info.giveawayChecked));
+  await channel.setTopic(buildTopic(info.typeKey, info.ownerId, null, info.giveawayChecked, info.supportChecked));
 
-  const openRow = ticketActionRow();
+  const openRow = ticketActionRow(info.typeKey, info.supportChecked);
 
   await interaction.update({ components: [openRow] }).catch(async () => {
     await interaction.message.edit({ components: [openRow] });
@@ -364,12 +388,63 @@ async function closeTicket(interaction, reason) {
   }, 5000);
 }
 
+// ---------- Support ticket check ----------
+
+// Handles a click on the green ✅ Check button (support tickets only):
+// prefixes the channel name with ✅ once, marks it checked in the topic
+// (so it can't double-prefix on repeat clicks or after a claim/unclaim
+// refresh), and swaps the button for a disabled "✅ Checked".
+async function checkTicket(interaction) {
+  const channel = interaction.channel;
+  const info = parseTopic(channel.topic);
+  if (!info) {
+    return interaction.reply({ content: "This isn't a ticket channel.", ephemeral: true });
+  }
+  if (info.typeKey !== "support") {
+    return interaction.reply({ content: "This button is only for support tickets.", ephemeral: true });
+  }
+  if (info.supportChecked) {
+    return interaction.reply({ content: "This ticket has already been checked.", ephemeral: true });
+  }
+
+  await channel.setTopic(buildTopic(info.typeKey, info.ownerId, info.claimedById, info.giveawayChecked, true));
+
+  // Discord channel names allow most Unicode set via the API (unlike the
+  // client UI's typing restrictions), so the ✅ should come through fine.
+  const newName = `✅${channel.name}`.slice(0, 100);
+  await channel.setName(newName).catch(() => {});
+
+  // Rebuild the existing button row, only swapping the Check button so
+  // Close/Claim (or Close/Unclaim) stay exactly as they were.
+  const existingRow = interaction.message.components[0];
+  const rebuiltRow = new ActionRowBuilder();
+  for (const component of existingRow.components) {
+    if (component.customId === "ticket_check") {
+      rebuiltRow.addComponents(buildCheckButton(true));
+    } else {
+      rebuiltRow.addComponents(ButtonBuilder.from(component));
+    }
+  }
+
+  await interaction.update({ components: [rebuiltRow] }).catch(async () => {
+    await interaction.message.edit({ components: [rebuiltRow] });
+  });
+
+  await channel.send({ content: `✅ Ticket checked by <@${interaction.user.id}>.` });
+
+  await logEvent(interaction.guild, {
+    title: `Ticket Checked: #${channel.name}`,
+    color: 0x57f287,
+    fields: [{ name: "Checked by", value: `<@${interaction.user.id}>`, inline: true }]
+  });
+}
+
 // ---------- Giveaway win check helpers ----------
 
 // Flags this ticket's topic as "checked" so the giveaway win check only
 // ever runs once per ticket, while preserving the current claim state.
 async function markGiveawayChecked(channel, info) {
-  await channel.setTopic(buildTopic(info.typeKey, info.ownerId, info.claimedById, true));
+  await channel.setTopic(buildTopic(info.typeKey, info.ownerId, info.claimedById, true, info.supportChecked));
 }
 
 // Finds the original ticket panel message (the one with the Close/Claim
@@ -466,6 +541,7 @@ module.exports = {
   extractKeywordSlug,
   claimTicket,
   unclaimTicket,
+  checkTicket,
   closeTicket,
   markGiveawayChecked,
   addJumpToWinButton

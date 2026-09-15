@@ -34,8 +34,8 @@ module.exports = {
       style: "Danger", // red
       channelPrefix: "support",
       color: 0xed4245, // red
-      categoryId: "1549321088880869426",
-      roleId: "1549321180899450890"
+      categoryId: "PUT_SUPPORT_CATEGORY_ID_HERE",
+      roleId: "PUT_SUPPORT_ROLE_ID_HERE"
     },
     buysell: {
       key: "buysell",
@@ -45,8 +45,8 @@ module.exports = {
       style: "Secondary", // grey
       channelPrefix: "spawners",
       color: 0x99aab5, // grey
-      categoryId: "1549321112293478490",
-      roleId: "1549321180899450890"
+      categoryId: "PUT_BUYSELL_CATEGORY_ID_HERE",
+      roleId: "PUT_BUYSELL_ROLE_ID_HERE"
     },
     giveaway: {
       key: "giveaway",
@@ -56,22 +56,32 @@ module.exports = {
       style: "Success", // green
       channelPrefix: "giveaway",
       color: 0x57f287, // green
-      categoryId: "1549321112293478490",
-      roleId: "1549321180899450890"
+      categoryId: "PUT_GIVEAWAY_CATEGORY_ID_HERE",
+      roleId: "PUT_GIVEAWAY_ROLE_ID_HERE"
     }
   },
 
   // Optional: a channel ID where closed-ticket transcripts/reasons get logged.
   // Leave as null to disable logging.
-  logChannelId: "1549322089658454086",
+  logChannelId: null,
 
   // The channel the bot scans for giveaway win announcements. When someone
   // opens a Giveaway Claim ticket and types the amount they say they won
   // (e.g. "50000"), the bot searches this channel for a message that
   // mentions them AND contains that amount. Leave as "PUT_..._HERE" to
   // disable the check.
-  giveawayCheckChannelId: "1549323453683863573",
+  giveawayCheckChannelId: "PUT_GIVEAWAY_CHECK_CHANNEL_ID_HERE",
 
   // How many of the most recent messages in that channel to scan per check.
-  giveawayScanMessageLimit: 500
+  giveawayScanMessageLimit: 500,
+
+  // Prefix-command moderation: ?to (timeout), ?k (kick), ?b (ban).
+  // Anyone with the Discord "Administrator" permission can use all three
+  // regardless of roles. Otherwise each command needs its own role below.
+  moderation: {
+    prefix: "?",
+    timeoutRoleId: "1549321180899450890",
+    kickRoleId: "1549321180899450890",
+    banRoleId: "1549321989519310888"
+  }
 };

@@ -1,37 +1,14 @@
-const { ActionRowBuilder, StringSelectMenuBuilder, EmbedBuilder } = require("discord.js");
-const config = require("./config.js");
+const { SlashCommandBuilder, PermissionFlagsBits } = require("discord.js");
+const { buildPanel } = require("../panel.js");
 
-function buildPanel() {
-  const embed = new EmbedBuilder()
-    .setColor(0x2b2d31)
-    .setTitle(config.panelTitle)
-    .setDescription(config.panelDescription)
-    .setThumbnail(config.panelImageUrl);
+module.exports = {
+  data: new SlashCommandBuilder()
+    .setName("panel")
+    .setDescription("Post the BC3500 ticket panel in this channel.")
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels),
 
-  const menu = new StringSelectMenuBuilder()
-    .setCustomId("ticket_select")
-    .setPlaceholder("Select an option...")
-    .addOptions(
-      {
-        label: config.ticketTypes.support.label,
-        value: config.ticketTypes.support.buttonId,
-        emoji: config.ticketTypes.support.emoji
-      },
-      {
-        label: config.ticketTypes.buysell.label,
-        value: config.ticketTypes.buysell.buttonId,
-        emoji: config.ticketTypes.buysell.emoji
-      },
-      {
-        label: config.ticketTypes.giveaway.label,
-        value: config.ticketTypes.giveaway.buttonId,
-        emoji: config.ticketTypes.giveaway.emoji
-      }
-    );
-
-  const row = new ActionRowBuilder().addComponents(menu);
-
-  return { embeds: [embed], components: [row] };
-}
-
-module.exports = { buildPanel };
+  async execute(interaction) {
+    await interaction.channel.send(buildPanel());
+    await interaction.reply({ content: "Panel posted.", ephemeral: true });
+  }
+};

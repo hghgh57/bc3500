@@ -63,7 +63,7 @@ module.exports = {
 
   // Optional: a channel ID where closed-ticket transcripts/reasons get logged.
   // Leave as null to disable logging.
-  logChannelId: null,
+  logChannelId: "1549322089658454086",
 
   // The channel the bot scans for giveaway win announcements. When someone
   // opens a Giveaway Claim ticket and types the amount they say they won

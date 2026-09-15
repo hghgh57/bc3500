@@ -152,12 +152,23 @@ client.on("interactionCreate", async (interaction) => {
             user: interaction.user,
             fields
           });
-          return interaction.reply({
+          await interaction.reply({
             content: alreadyExists
               ? `You already have an open ticket: <#${channel.id}>`
               : `Your ticket has been created: <#${channel.id}>`,
             ephemeral: true
           });
+
+          // If they gave a real amount in the "How much did you win?"
+          // field, run the giveaway check right away instead of waiting
+          // for them to type it again as a plain message.
+          if (!alreadyExists) {
+            const amount = parseAmount(won);
+            if (amount !== null) {
+              await runGiveawayCheck(channel, interaction.user.id, amount);
+            }
+          }
+          return;
         }
 
         case "modal_close_reason": {
@@ -178,10 +189,43 @@ client.on("interactionCreate", async (interaction) => {
 });
 
 // ---------- Giveaway claim amount check ----------
-// Inside a Giveaway Claim/Sponsor ticket, the first time the ticket opener
-// sends a message that's just an amount (e.g. "50000", "$50k"), the bot
-// checks config.giveawayCheckChannelId for a matching win and replies with
-// the result. It only ever runs once per ticket.
+// Runs the actual win check for a giveaway ticket: looks up
+// config.giveawayCheckChannelId for a message mentioning the ticket owner
+// with a matching amount, posts a clear Yes/No result in the ticket, and
+// (if a win is found) adds a Jump to Win button. Only ever runs once per
+// ticket - callers are expected to check info.giveawayChecked first.
+async function runGiveawayCheck(channel, ownerId, amount) {
+  const info = parseTopic(channel.topic);
+  if (!info || info.giveawayChecked) return;
+
+  await markGiveawayChecked(channel, info);
+
+  const result = await findGiveawayWin(channel.guild, ownerId, amount);
+
+  if (!result.configured) {
+    await channel.send({
+      content:
+        `❌ **No, no matching win found for ${amount.toLocaleString()}.**\n` +
+        "(Note for staff: `giveawayCheckChannelId` isn't set in config.js yet, so this is unverified — please double check manually.)"
+    });
+    return;
+  }
+
+  if (result.found) {
+    await channel.send({
+      content: `✅ **Yes, found a matching win for ${amount.toLocaleString()}** — <${result.message.url}>`
+    });
+    await addJumpToWinButton(channel, result.message.url);
+  } else {
+    await channel.send({
+      content: `❌ **No matching win found for ${amount.toLocaleString()}** in <#${config.giveawayCheckChannelId}>. Staff can still verify manually.`
+    });
+  }
+}
+
+// Fallback path: if the ticket opener didn't give a usable amount in the
+// modal (left it blank or put "N/A"), they can still trigger the check
+// later by typing just the amount as a plain message in the ticket.
 client.on("messageCreate", async (message) => {
   try {
     if (message.author.bot || !message.guild) return;
@@ -194,26 +238,7 @@ client.on("messageCreate", async (message) => {
     const amount = parseAmount(message.content);
     if (amount === null) return;
 
-    await markGiveawayChecked(message.channel, info);
-
-    const result = await findGiveawayWin(message.guild, info.ownerId, amount);
-
-    if (!result.configured) {
-      return message.channel.send({
-        content: "⚠️ Giveaway checking isn't configured yet — staff will need to verify this claim manually."
-      });
-    }
-
-    if (result.found) {
-      await message.channel.send({
-        content: `✅ Found a matching win for **${amount.toLocaleString()}** — <${result.message.url}>`
-      });
-      await addJumpToWinButton(message.channel, result.message.url);
-    } else {
-      await message.channel.send({
-        content: `❌ Couldn't find a giveaway win for **${amount.toLocaleString()}** in <#${config.giveawayCheckChannelId}>. Staff can still verify manually.`
-      });
-    }
+    await runGiveawayCheck(message.channel, info.ownerId, amount);
   } catch (err) {
     console.error("Giveaway claim check failed:", err);
   }

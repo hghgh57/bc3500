@@ -326,6 +326,7 @@ async function closeTicket(interaction, reason) {
     .setColor(0xed4245)
     .setTitle("Ticket Closed")
     .addFields(
+      { name: "Opened by", value: `<@${info.ownerId}>`, inline: true },
       { name: "Closed by", value: `<@${interaction.user.id}>`, inline: true },
       { name: "Reason", value: reason && reason.trim().length ? reason : "No reason provided", inline: true }
     )
@@ -337,6 +338,7 @@ async function closeTicket(interaction, reason) {
     title: `Ticket Closed: #${channel.name}`,
     color: 0xed4245,
     fields: [
+      { name: "Opened by", value: `<@${info.ownerId}>`, inline: true },
       { name: "Closed by", value: `<@${interaction.user.id}>`, inline: true },
       { name: "Reason", value: reason && reason.trim().length ? reason : "No reason provided", inline: true }
     ]

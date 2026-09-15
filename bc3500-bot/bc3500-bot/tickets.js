@@ -30,6 +30,38 @@ function ticketActionRow() {
   );
 }
 
+// Row shown once a ticket has been claimed: Close stays the same, but the
+// Claim button turns into an (enabled) Unclaim button so the claimer (or
+// another staff member) can release it again.
+function claimedActionRow(claimerUsername) {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId("ticket_close").setLabel("Close").setStyle(ButtonStyle.Danger),
+    new ButtonBuilder()
+      .setCustomId("ticket_unclaim")
+      .setLabel(`Claimed by ${claimerUsername} (Unclaim)`)
+      .setStyle(ButtonStyle.Secondary)
+  );
+}
+
+// Sends a log embed to config.logChannelId, if one is configured. Used for
+// ticket claims, unclaims, renames, and closes so staff have one place to
+// audit ticket activity.
+async function logEvent(guild, { title, description, color, fields }) {
+  if (!config.logChannelId) return;
+  const logChannel = guild.channels.cache.get(config.logChannelId);
+  if (!logChannel) return;
+
+  const embed = new EmbedBuilder()
+    .setColor(color || 0x2b2d31)
+    .setTitle(title)
+    .setTimestamp();
+
+  if (description) embed.setDescription(description);
+  if (fields && fields.length) embed.addFields(fields);
+
+  await logChannel.send({ embeds: [embed] }).catch(() => {});
+}
+
 function findExistingTicket(guild, typeKey, userId) {
   return guild.channels.cache.find((ch) => {
     if (ch.type !== ChannelType.GuildText) return false;
@@ -226,21 +258,52 @@ async function claimTicket(interaction) {
 
   await channel.setTopic(buildTopic(info.typeKey, info.ownerId, interaction.user.id));
 
-  const disabledRow = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId("ticket_close").setLabel("Close").setStyle(ButtonStyle.Danger),
-    new ButtonBuilder()
-      .setCustomId("ticket_claim")
-      .setLabel(`Claimed by ${interaction.user.username}`)
-      .setStyle(ButtonStyle.Secondary)
-      .setDisabled(true)
-  );
+  const claimedRow = claimedActionRow(interaction.user.username);
 
-  await interaction.update({ components: [disabledRow] }).catch(async () => {
+  await interaction.update({ components: [claimedRow] }).catch(async () => {
     // If the original interaction can't be updated (e.g. permissions changed), fall back
-    await interaction.message.edit({ components: [disabledRow] });
+    await interaction.message.edit({ components: [claimedRow] });
   });
 
   await channel.send({ content: `🔧 Ticket claimed by <@${interaction.user.id}>.` });
+
+  await logEvent(interaction.guild, {
+    title: `Ticket Claimed: #${channel.name}`,
+    color: 0x5865f2,
+    fields: [{ name: "Claimed by", value: `<@${interaction.user.id}>`, inline: true }]
+  });
+}
+
+async function unclaimTicket(interaction) {
+  const channel = interaction.channel;
+  const info = parseTopic(channel.topic);
+  if (!info) {
+    return interaction.reply({ content: "This isn't a ticket channel.", ephemeral: true });
+  }
+  if (!info.claimedById) {
+    return interaction.reply({ content: "This ticket isn't claimed.", ephemeral: true });
+  }
+
+  const previousClaimerId = info.claimedById;
+
+  await channel.setTopic(buildTopic(info.typeKey, info.ownerId, null));
+
+  const openRow = ticketActionRow();
+
+  await interaction.update({ components: [openRow] }).catch(async () => {
+    await interaction.message.edit({ components: [openRow] });
+  });
+
+  await channel.send({ content: `🔓 Ticket unclaimed by <@${interaction.user.id}>.` });
+
+  await logEvent(interaction.guild, {
+    title: `Ticket Unclaimed: #${channel.name}`,
+    color: 0x99aab5,
+    fields: [
+      { name: "Unclaimed by", value: `<@${interaction.user.id}>`, inline: true },
+      { name: "Previously claimed by", value: `<@${previousClaimerId}>`, inline: true }
+    ]
+  });
 }
 
 async function closeTicket(interaction, reason) {
@@ -261,13 +324,14 @@ async function closeTicket(interaction, reason) {
 
   await interaction.reply({ embeds: [embed] });
 
-  if (config.logChannelId) {
-    const logChannel = interaction.guild.channels.cache.get(config.logChannelId);
-    if (logChannel) {
-      const logEmbed = EmbedBuilder.from(embed).setTitle(`Ticket Closed: #${channel.name}`);
-      await logChannel.send({ embeds: [logEmbed] }).catch(() => {});
-    }
-  }
+  await logEvent(interaction.guild, {
+    title: `Ticket Closed: #${channel.name}`,
+    color: 0xed4245,
+    fields: [
+      { name: "Closed by", value: `<@${interaction.user.id}>`, inline: true },
+      { name: "Reason", value: reason && reason.trim().length ? reason : "No reason provided", inline: true }
+    ]
+  });
 
   setTimeout(() => {
     channel.delete(`Ticket closed by ${interaction.user.tag}${reason ? `: ${reason}` : ""}`).catch(() => {});
@@ -278,11 +342,14 @@ module.exports = {
   buildTopic,
   parseTopic,
   ticketActionRow,
+  claimedActionRow,
+  logEvent,
   findExistingTicket,
   createTicketChannel,
   buildBuySellModal,
   buildGiveawayModal,
   buildCloseReasonModal,
   claimTicket,
+  unclaimTicket,
   closeTicket
 };

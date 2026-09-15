@@ -16,7 +16,7 @@ const {
   markGiveawayChecked,
   addJumpToWinButton
 } = require("./tickets.js");
-const { parseAmount, findGiveawayWin } = require("./giveawayChecker.js");
+const { parseAmount, findGiveawayWin, formatAmountShort } = require("./giveawayChecker.js");
 
 const client = new Client({
   intents: [
@@ -138,11 +138,17 @@ client.on("interactionCreate", async (interaction) => {
         }
 
         case "modal_giveaway": {
-          const won = interaction.fields.getTextInputValue("gw_won") || "N/A";
+          const wonRaw = interaction.fields.getTextInputValue("gw_won") || "N/A";
           const sponsoring = interaction.fields.getTextInputValue("gw_sponsor") || "N/A";
+
+          // Parse whatever they typed (e.g. "10000000") so the embed can
+          // always show it back in short form (e.g. "10m").
+          const wonAmount = parseAmount(wonRaw);
+          const wonDisplay = wonAmount !== null ? formatAmountShort(wonAmount) : wonRaw;
+
           const fields = [
             { name: "Claim or Sponsor?", value: interaction.fields.getTextInputValue("gw_type") },
-            { name: "How much did you win?", value: won },
+            { name: "How much did you win?", value: wonDisplay },
             { name: "How much are you sponsoring?", value: sponsoring },
             { name: "IGN", value: interaction.fields.getTextInputValue("gw_ign") }
           ];
@@ -162,11 +168,8 @@ client.on("interactionCreate", async (interaction) => {
           // If they gave a real amount in the "How much did you win?"
           // field, run the giveaway check right away instead of waiting
           // for them to type it again as a plain message.
-          if (!alreadyExists) {
-            const amount = parseAmount(won);
-            if (amount !== null) {
-              await runGiveawayCheck(channel, interaction.user.id, amount);
-            }
+          if (!alreadyExists && wonAmount !== null) {
+            await runGiveawayCheck(channel, interaction.user.id, wonAmount);
           }
           return;
         }
@@ -205,7 +208,7 @@ async function runGiveawayCheck(channel, ownerId, amount) {
   if (!result.configured) {
     await channel.send({
       content:
-        `❌ **No, no matching win found for ${amount.toLocaleString()}.**\n` +
+        `❌ **No, no matching win found for ${formatAmountShort(amount)}.**\n` +
         "(Note for staff: `giveawayCheckChannelId` isn't set in config.js yet, so this is unverified — please double check manually.)"
     });
     return;
@@ -213,12 +216,12 @@ async function runGiveawayCheck(channel, ownerId, amount) {
 
   if (result.found) {
     await channel.send({
-      content: `✅ **Yes, found a matching win for ${amount.toLocaleString()}** — <${result.message.url}>`
+      content: `✅ **Yes, found a matching win for ${formatAmountShort(amount)}!**`
     });
     await addJumpToWinButton(channel, result.message.url);
   } else {
     await channel.send({
-      content: `❌ **No matching win found for ${amount.toLocaleString()}** in <#${config.giveawayCheckChannelId}>. Staff can still verify manually.`
+      content: `❌ **No matching win found for ${formatAmountShort(amount)}** in <#${config.giveawayCheckChannelId}>. Staff can still verify manually.`
     });
   }
 }

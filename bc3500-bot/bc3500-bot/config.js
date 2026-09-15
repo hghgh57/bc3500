@@ -34,8 +34,8 @@ module.exports = {
       style: "Danger", // red
       channelPrefix: "support",
       color: 0xed4245, // red
-      categoryId: "PUT_SUPPORT_CATEGORY_ID_HERE",
-      roleId: "PUT_SUPPORT_ROLE_ID_HERE"
+      categoryId: "1549321088880869426",
+      roleId: "1549321180899450890"
     },
     buysell: {
       key: "buysell",
@@ -45,8 +45,8 @@ module.exports = {
       style: "Secondary", // grey
       channelPrefix: "spawners",
       color: 0x99aab5, // grey
-      categoryId: "PUT_BUYSELL_CATEGORY_ID_HERE",
-      roleId: "PUT_BUYSELL_ROLE_ID_HERE"
+      categoryId: "1549321112293478490",
+      roleId: "1549321180899450890"
     },
     giveaway: {
       key: "giveaway",
@@ -56,8 +56,8 @@ module.exports = {
       style: "Success", // green
       channelPrefix: "giveaway",
       color: 0x57f287, // green
-      categoryId: "PUT_GIVEAWAY_CATEGORY_ID_HERE",
-      roleId: "PUT_GIVEAWAY_ROLE_ID_HERE"
+      categoryId: "1549321112293478490",
+      roleId: "1549321180899450890"
     }
   },
 

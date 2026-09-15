@@ -12,7 +12,9 @@ const {
   closeTicket,
   buildBuySellModal,
   buildGiveawayModal,
+  buildSupportModal,
   buildCloseReasonModal,
+  extractKeywordSlug,
   markGiveawayChecked,
   addJumpToWinButton
 } = require("./tickets.js");
@@ -84,20 +86,8 @@ client.on("interactionCreate", async (interaction) => {
     // ---------- Buttons ----------
     if (interaction.isButton()) {
       switch (interaction.customId) {
-        case "ticket_support": {
-          const { alreadyExists, channel } = await createTicketChannel({
-            interaction,
-            typeKey: "support",
-            user: interaction.user,
-            fields: []
-          });
-          return interaction.reply({
-            content: alreadyExists
-              ? `You already have an open ticket: <#${channel.id}>`
-              : `Your ticket has been created: <#${channel.id}>`,
-            ephemeral: true
-          });
-        }
+        case "ticket_support":
+          return interaction.showModal(buildSupportModal());
 
         case "ticket_buysell":
           return interaction.showModal(buildBuySellModal());
@@ -175,6 +165,30 @@ client.on("interactionCreate", async (interaction) => {
             await runGiveawayCheck(channel, interaction.user.id, wonAmount);
           }
           return;
+        }
+
+        case "modal_support": {
+          const issueText = interaction.fields.getTextInputValue("support_issue");
+          const fields = [{ name: "What do you need help with?", value: issueText }];
+
+          const { alreadyExists, channel } = await createTicketChannel({
+            interaction,
+            typeKey: "support",
+            user: interaction.user,
+            fields
+          });
+
+          if (!alreadyExists) {
+            const slug = extractKeywordSlug(issueText);
+            await channel.setName(`help-${slug}`).catch(() => {});
+          }
+
+          return interaction.reply({
+            content: alreadyExists
+              ? `You already have an open ticket: <#${channel.id}>`
+              : `Your ticket has been created: <#${channel.id}>`,
+            ephemeral: true
+          });
         }
 
         case "modal_close_reason": {

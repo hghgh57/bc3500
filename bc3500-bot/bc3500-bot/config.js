@@ -63,5 +63,15 @@ module.exports = {
 
   // Optional: a channel ID where closed-ticket transcripts/reasons get logged.
   // Leave as null to disable logging.
-  logChannelId: null
+  logChannelId: null,
+
+  // The channel the bot scans for giveaway win announcements. When someone
+  // opens a Giveaway Claim ticket and types the amount they say they won
+  // (e.g. "50000"), the bot searches this channel for a message that
+  // mentions them AND contains that amount. Leave as "PUT_..._HERE" to
+  // disable the check.
+  giveawayCheckChannelId: "PUT_GIVEAWAY_CHECK_CHANNEL_ID_HERE",
+
+  // How many of the most recent messages in that channel to scan per check.
+  giveawayScanMessageLimit: 500
 };

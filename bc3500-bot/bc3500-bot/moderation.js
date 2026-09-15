@@ -216,6 +216,69 @@ async function runBanCommand(message, args) {
   });
 }
 
+// ---------- ?w (warn) ----------
+
+async function runWarnCommand(message, args) {
+  const roleId = config.moderation.warnRoleId;
+  if (!hasPermissionOrRole(message.member, roleId)) {
+    return message.reply({ content: "❌ You don't have permission to use this command." });
+  }
+
+  const targetUser = message.mentions.users?.first();
+  if (!targetUser) {
+    return message.reply({ content: `Usage: \`${PREFIX}w @user <reason>\` — a reason is required.` });
+  }
+
+  const reason = stripMentionArgs(args).join(" ").trim();
+  if (!reason) {
+    return message.reply({ content: `A reason is required. Usage: \`${PREFIX}w @user <reason>\`` });
+  }
+
+  // Delete the command message itself so the warning doesn't sit publicly
+  // in the channel - everything else about this command happens over DM.
+  await message.delete().catch(() => {});
+
+  const warnDmEmbed = new EmbedBuilder()
+    .setColor(0xfee75c)
+    .setTitle("⚠️ You have been warned")
+    .addFields(
+      { name: "Server", value: message.guild.name, inline: true },
+      { name: "Moderator", value: message.author.tag, inline: true },
+      { name: "Reason", value: reason }
+    )
+    .setTimestamp();
+
+  const dmToUserFailed = await targetUser
+    .send({ embeds: [warnDmEmbed] })
+    .then(() => false)
+    .catch(() => true);
+
+  const confirmationEmbed = new EmbedBuilder()
+    .setColor(0xfee75c)
+    .setTitle("⚠️ Member Warned")
+    .addFields(
+      { name: "User", value: `${targetUser.tag} (${targetUser.id})`, inline: true },
+      { name: "Moderator", value: `<@${message.author.id}>`, inline: true },
+      { name: "Reason", value: reason }
+    )
+    .setFooter({ text: dmToUserFailed ? "Could not DM the user - they may have DMs off." : "User was notified via DM." })
+    .setTimestamp();
+
+  // Private reply: DM the moderator the confirmation instead of posting it
+  // in the channel.
+  await message.author.send({ embeds: [confirmationEmbed] }).catch(() => {});
+
+  await logEvent(message.guild, {
+    title: `Member Warned: ${targetUser.tag}`,
+    color: 0xfee75c,
+    fields: [
+      { name: "User", value: `<@${targetUser.id}>`, inline: true },
+      { name: "Moderator", value: `<@${message.author.id}>`, inline: true },
+      { name: "Reason", value: reason }
+    ]
+  });
+}
+
 // ---------- Dispatch ----------
 
 // Returns true if the message was handled as a prefix command (so the
@@ -235,6 +298,9 @@ async function handlePrefixCommand(message) {
       return true;
     case "b":
       await runBanCommand(message, args);
+      return true;
+    case "w":
+      await runWarnCommand(message, args);
       return true;
     default:
       return false;

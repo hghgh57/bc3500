@@ -140,7 +140,33 @@ async function findGiveawayWin(guild, ownerId, amount) {
   return { configured: true, found: true, message: matches[0] };
 }
 
+// Formats a plain number back into short form with a k/m/b suffix, e.g.
+// 10000000 -> "10m", 50000 -> "50k", 1500000 -> "1.5m". Used so results are
+// shown the way people actually type amounts, not as long raw numbers.
+function formatAmountShort(amount) {
+  const abs = Math.abs(amount);
+  let value = amount;
+  let suffix = "";
+
+  if (abs >= 1_000_000_000) {
+    value = amount / 1_000_000_000;
+    suffix = "b";
+  } else if (abs >= 1_000_000) {
+    value = amount / 1_000_000;
+    suffix = "m";
+  } else if (abs >= 1_000) {
+    value = amount / 1_000;
+    suffix = "k";
+  } else {
+    return String(amount);
+  }
+
+  const rounded = Math.round(value * 100) / 100;
+  return `${rounded}${suffix}`;
+}
+
 module.exports = {
   parseAmount,
-  findGiveawayWin
+  findGiveawayWin,
+  formatAmountShort
 };

@@ -9,6 +9,7 @@ const {
   createTicketChannel,
   claimTicket,
   unclaimTicket,
+  checkTicket,
   closeTicket,
   buildBuySellModal,
   buildGiveawayModal,
@@ -100,6 +101,9 @@ client.on("interactionCreate", async (interaction) => {
 
         case "ticket_unclaim":
           return unclaimTicket(interaction);
+
+        case "ticket_check":
+          return checkTicket(interaction);
 
         case "ticket_close":
           return interaction.showModal(buildCloseReasonModal());

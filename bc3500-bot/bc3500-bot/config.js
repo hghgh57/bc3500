@@ -15,13 +15,19 @@ module.exports = {
   panelImageUrl:
     "https://cdn.britannica.com/19/233519-050-F0604A51/LeBron-James-Los-Angeles-Lakers-Staples-Center-2019.jpg?w=400&h=300&c=crop",
 
-  panelTitle: "BC3500 Tickets",
+  panelTitle: "🎫 Create a New Ticket",
 
   panelDescription:
-    "Please select the category that best matches your request to open a ticket:\n\n" +
-    " **Support:** General help.\n" +
-    " **Giveaway Claim / Sponsor:** Claim your prizes or if you want to host a giveaway.\n" +
-    " **Buying/Selling Skellies:** To sell or purchase spawners.",
+    "Please select the category that best describes your request from the dropdown below. This will open a private ticket channel for you and our staff.\n" +
+    "**Read the rules before opening a ticket.**\n\n" +
+    "**Ticket Rules:**\n" +
+    "1. Be respectful to staff and other players.\n" +
+    "2. Do not spam or flood the ticket with messages.\n" +
+    "3. Provide clear and concise information about your issue.\n" +
+    "4. Follow any instructions given by staff.\n" +
+    "5. Do not share personal information in the ticket.\n" +
+    "6. Tickets may be closed if inactive for a period of time.\n" +
+    "7. Abusing the ticket system may result in penalties.",
 
   // One entry per ticket type. categoryId = the Discord channel CATEGORY the
   // ticket channel gets created under. roleId = the role that gets pinged.

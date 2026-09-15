@@ -34,8 +34,8 @@ module.exports = {
       style: "Danger", // red
       channelPrefix: "support",
       color: 0xed4245, // red
-      categoryId: "PUT_SUPPORT_CATEGORY_ID_HERE",
-      roleId: "PUT_SUPPORT_ROLE_ID_HERE"
+      categoryId: "1549321088880869426",
+      roleId: "1549321180899450890"
     },
     buysell: {
       key: "buysell",
@@ -45,8 +45,8 @@ module.exports = {
       style: "Secondary", // grey
       channelPrefix: "spawners",
       color: 0x99aab5, // grey
-      categoryId: "PUT_BUYSELL_CATEGORY_ID_HERE",
-      roleId: "PUT_BUYSELL_ROLE_ID_HERE"
+      categoryId: "1549321112293478490",
+      roleId: "1549321180899450890"
     },
     giveaway: {
       key: "giveaway",
@@ -56,21 +56,21 @@ module.exports = {
       style: "Success", // green
       channelPrefix: "giveaway",
       color: 0x57f287, // green
-      categoryId: "PUT_GIVEAWAY_CATEGORY_ID_HERE",
-      roleId: "PUT_GIVEAWAY_ROLE_ID_HERE"
+      categoryId: "1549321140479205376",
+      roleId: "1549321180899450890"
     }
   },
 
   // Optional: a channel ID where closed-ticket transcripts/reasons get logged.
   // Leave as null to disable logging.
-  logChannelId: null,
+  logChannelId: "1549322089658454086",
 
   // The channel the bot scans for giveaway win announcements. When someone
   // opens a Giveaway Claim ticket and types the amount they say they won
   // (e.g. "50000"), the bot searches this channel for a message that
   // mentions them AND contains that amount. Leave as "PUT_..._HERE" to
   // disable the check.
-  giveawayCheckChannelId: "PUT_GIVEAWAY_CHECK_CHANNEL_ID_HERE",
+  giveawayCheckChannelId: "1549323453683863573",
 
   // How many of the most recent messages in that channel to scan per check.
   giveawayScanMessageLimit: 500,

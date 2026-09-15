@@ -4,10 +4,27 @@ const path = require("path");
 const { Client, Collection, GatewayIntentBits, Partials, REST, Routes } = require("discord.js");
 
 const config = require("./config.js");
-const { createTicketChannel, claimTicket, closeTicket, buildBuySellModal, buildGiveawayModal, buildCloseReasonModal } = require("./tickets.js");
+const {
+  parseTopic,
+  createTicketChannel,
+  claimTicket,
+  unclaimTicket,
+  closeTicket,
+  buildBuySellModal,
+  buildGiveawayModal,
+  buildCloseReasonModal,
+  markGiveawayChecked,
+  addJumpToWinButton
+} = require("./tickets.js");
+const { parseAmount, findGiveawayWin } = require("./giveawayChecker.js");
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent
+  ],
   partials: [Partials.Channel]
 });
 
@@ -88,6 +105,9 @@ client.on("interactionCreate", async (interaction) => {
         case "ticket_claim":
           return claimTicket(interaction);
 
+        case "ticket_unclaim":
+          return unclaimTicket(interaction);
+
         case "ticket_close":
           return interaction.showModal(buildCloseReasonModal());
       }
@@ -154,6 +174,48 @@ client.on("interactionCreate", async (interaction) => {
         .reply({ content: "Something went wrong handling that. Check the console log.", ephemeral: true })
         .catch(() => {});
     }
+  }
+});
+
+// ---------- Giveaway claim amount check ----------
+// Inside a Giveaway Claim/Sponsor ticket, the first time the ticket opener
+// sends a message that's just an amount (e.g. "50000", "$50k"), the bot
+// checks config.giveawayCheckChannelId for a matching win and replies with
+// the result. It only ever runs once per ticket.
+client.on("messageCreate", async (message) => {
+  try {
+    if (message.author.bot || !message.guild) return;
+
+    const info = parseTopic(message.channel.topic);
+    if (!info || info.typeKey !== "giveaway") return;
+    if (info.giveawayChecked) return;
+    if (message.author.id !== info.ownerId) return;
+
+    const amount = parseAmount(message.content);
+    if (amount === null) return;
+
+    await markGiveawayChecked(message.channel, info);
+
+    const result = await findGiveawayWin(message.guild, info.ownerId, amount);
+
+    if (!result.configured) {
+      return message.channel.send({
+        content: "⚠️ Giveaway checking isn't configured yet — staff will need to verify this claim manually."
+      });
+    }
+
+    if (result.found) {
+      await message.channel.send({
+        content: `✅ Found a matching win for **${amount.toLocaleString()}** — <${result.message.url}>`
+      });
+      await addJumpToWinButton(message.channel, result.message.url);
+    } else {
+      await message.channel.send({
+        content: `❌ Couldn't find a giveaway win for **${amount.toLocaleString()}** in <#${config.giveawayCheckChannelId}>. Staff can still verify manually.`
+      });
+    }
+  } catch (err) {
+    console.error("Giveaway claim check failed:", err);
   }
 });
 

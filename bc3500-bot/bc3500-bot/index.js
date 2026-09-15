@@ -87,15 +87,6 @@ client.on("interactionCreate", async (interaction) => {
     // ---------- Buttons ----------
     if (interaction.isButton()) {
       switch (interaction.customId) {
-        case "ticket_support":
-          return interaction.showModal(buildSupportModal());
-
-        case "ticket_buysell":
-          return interaction.showModal(buildBuySellModal());
-
-        case "ticket_giveaway":
-          return interaction.showModal(buildGiveawayModal());
-
         case "ticket_claim":
           return claimTicket(interaction);
 
@@ -107,6 +98,23 @@ client.on("interactionCreate", async (interaction) => {
 
         case "ticket_close":
           return interaction.showModal(buildCloseReasonModal());
+      }
+      return;
+    }
+
+    // ---------- Select menus ----------
+    if (interaction.isStringSelectMenu()) {
+      if (interaction.customId === "ticket_select") {
+        switch (interaction.values[0]) {
+          case "ticket_support":
+            return interaction.showModal(buildSupportModal());
+
+          case "ticket_buysell":
+            return interaction.showModal(buildBuySellModal());
+
+          case "ticket_giveaway":
+            return interaction.showModal(buildGiveawayModal());
+        }
       }
       return;
     }

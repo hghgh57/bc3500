@@ -17,6 +17,8 @@ const {
   addJumpToWinButton
 } = require("./tickets.js");
 const { parseAmount, findGiveawayWin, formatAmountShort } = require("./giveawayChecker.js");
+const { handlePrefixCommand } = require("./moderation.js");
+const { startTempBanChecker } = require("./tempBanManager.js");
 
 const client = new Client({
   intents: [
@@ -39,6 +41,7 @@ for (const file of fs.readdirSync(commandsPath).filter((f) => f.endsWith(".js"))
 client.once("ready", async () => {
   console.log(`BC3500 Bot is online as ${client.user.tag}`);
   await registerSlashCommands();
+  startTempBanChecker(client);
 });
 
 // Registers all slash commands automatically on every boot, so there's no
@@ -232,6 +235,9 @@ async function runGiveawayCheck(channel, ownerId, amount) {
 client.on("messageCreate", async (message) => {
   try {
     if (message.author.bot || !message.guild) return;
+
+    const handledCommand = await handlePrefixCommand(message);
+    if (handledCommand) return;
 
     const info = parseTopic(message.channel.topic);
     if (!info || info.typeKey !== "giveaway") return;
